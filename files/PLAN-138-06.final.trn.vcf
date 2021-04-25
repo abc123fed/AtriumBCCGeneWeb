@@ -1,0 +1,11 @@
+##fileformat=VCFv4.2
+##INFO=<ID=id,Number=1,Type=String,Description="">
+##INFO=<ID=sv_type,Number=1,Type=String,Description="">
+##INFO=<ID=q_score,Number=1,Type=Integer,Description="">
+##INFO=<ID=break_1,Number=1,Type=String,Description="">
+##INFO=<ID=break_2,Number=1,Type=String,Description="">
+##INFO=<ID=break_1_annotation,Number=1,Type=String,Description="">
+##INFO=<ID=break_2_annotation,Number=1,Type=String,Description="">
+##INFO=<ID=cosmicCensus,Number=.,Type=String,Description="Takes all the genes in a vcf line and tells if they are in the cosmic census list. Not found = not in this list. GENEA:[tier1,tier2],GENEB...">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+.	0	.	.	.	4	PASS	id=MantaBND:77061:0:1:0:1:0:0;sv_type=TRANSLOCATION;q_score=4;break_1=6:168468694;break_2=17:76800014;break_1_annotation=FRMD1:INTRON:2:-;break_2_annotation=USP36:EXON:16:-;nf=0.000000;tf=0.083333;cosmicCensus=.

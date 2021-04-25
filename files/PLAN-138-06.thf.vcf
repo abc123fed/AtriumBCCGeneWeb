@@ -1,0 +1,18 @@
+##fileformat=VCFv4.2
+##INFO=<ID=fusion_name,Number=1,Type=String,Description="">
+##INFO=<ID=junction_count,Number=1,Type=Integer,Description="">
+##INFO=<ID=span_count,Number=1,Type=Integer,Description="">
+##INFO=<ID=ffpm,Number=1,Type=Float,Description="">
+##INFO=<ID=left_chr,Number=1,Type=String,Description="">
+##INFO=<ID=left_pos,Number=1,Type=Integer,Description="">
+##INFO=<ID=left_strand,Number=1,Type=Character,Description="">
+##INFO=<ID=left_transcript,Number=1,Type=String,Description="">
+##INFO=<ID=left_region,Number=1,Type=String,Description="">
+##INFO=<ID=right_chr,Number=1,Type=String,Description="">
+##INFO=<ID=right_pos,Number=1,Type=Integer,Description="">
+##INFO=<ID=right_strand,Number=1,Type=Character,Description="">
+##INFO=<ID=right_transcript,Number=1,Type=String,Description="">
+##INFO=<ID=right_region,Number=1,Type=String,Description="">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+.	0	.	.	.	.	PASS	fusion_name=IGKV4-1--IGKJ2;junction_count=80;span_count=2;ffpm=0.398700;left_chr=chr2;left_pos=89185671;left_strand=+;left_transcript=ENST00000390243.2;left_region=downstream;right_chr=chr2;right_pos=89161074;right_strand=-;right_transcript=ENST00000390241.2;right_region=E1
+.	0	.	.	.	.	PASS	fusion_name=IGKV1D-33--IGKJ3;junction_count=39;span_count=0;ffpm=0.189600;left_chr=chr2;left_pos=89953351;left_strand=+;left_transcript=ENST00000390265.2;left_region=E2;right_chr=chr2;right_pos=89160770;right_strand=-;right_transcript=ENST00000390240.2;right_region=E1

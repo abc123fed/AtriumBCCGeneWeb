@@ -8,19 +8,20 @@ import os
 
 
 
-_upload_dir = "/users/jeremymiller/Downloads/homedir/"
-
+_upload_dir = "./files/"
+ref_folder = "./reference/"
+output_folder = "./homedir/"
 app = Flask(__name__)
 
 
-def get_score_genes(patient_id, score_map, fldr, score_suffix, nrzThreshold, crcThreshold):
+def get_score_genes(patient_id, score_map, score_suffix, nrzThreshold, crcThreshold):
     data_out = {}
     mg = mygene.MyGeneInfo()
     ens = []
     ens_nrz = {}
     ens_crc = {}
 
-    f = open(fldr + patient_id + score_suffix)
+    f = open(_upload_dir + patient_id + score_suffix)
     f.readline()
     for line in f:
         line_vec = line.split('\t')
@@ -61,7 +62,7 @@ def get_score_genes(patient_id, score_map, fldr, score_suffix, nrzThreshold, crc
                 data_out[ind_rule["drug"]].append(table_entry)
     return data_out
 
-def get_snp_genes(patient_id, snv_map, fldr, snv_suffix,):
+def get_snp_genes(patient_id, snv_map,snv_suffix,):
     d = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
          'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
          'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
@@ -69,7 +70,7 @@ def get_snp_genes(patient_id, snv_map, fldr, snv_suffix,):
 
     ens_snv = {}
     data_out = {}
-    f = open(fldr + patient_id + snv_suffix)
+    f = open(_upload_dir + patient_id + snv_suffix)
     f.readline()
     proc = False
     ens = []
@@ -127,8 +128,8 @@ def get_snp_genes(patient_id, snv_map, fldr, snv_suffix,):
                 data_out[ind_rule["drug"]].append(table_entry)
     return data_out
 
-def get_cnv_genes(patient_id, cnv_map, fldr, cnv_suffix,cnv_threshold):
-    f = open(fldr + patient_id + cnv_suffix)
+def get_cnv_genes(patient_id, cnv_map, cnv_suffix,cnv_threshold):
+    f = open(_upload_dir + patient_id + cnv_suffix)
     f.readline()
     proc = False
     ens = []
@@ -161,8 +162,8 @@ def get_cnv_genes(patient_id, cnv_map, fldr, cnv_suffix,cnv_threshold):
                 data_out[ind_rule["drug"]].append(table_entry)
     return(data_out)
 
-def get_fusion_genes(patient_id, fusion_map, fldr, fusion_suffix):
-    f = open(fldr + patient_id + fusion_suffix)
+def get_fusion_genes(patient_id, fusion_map, fusion_suffix):
+    f = open(_upload_dir + patient_id + fusion_suffix)
     blah = f.read()
     data_out = {}
     blah = blah.replace("\n","**")
@@ -202,13 +203,14 @@ def get_fusion_genes(patient_id, fusion_map, fldr, fusion_suffix):
             data_out[ind_rule["drug"]].append(table_entry)
     return(data_out)
 
-def write_html_file(folder,patient):
-    f = open (folder+patient +".html","w")
+def write_html_file(patient):
+    filename = output_folder + patient +".html"
+    f = open (filename,"w")
     f.write("<!DOCTYPE html>\n")
     f.write("<html>\n")
     f.write("\t<body>\n")
     f.write("<div class = \"header\">\n")
-    f.write("<img src = \"/Users/jeremymiller/Downloads/PMed Stuff/image001.png\" style=\"display: inline;\"></img>\n")
+    f.write("<img src =\"" + output_folder + "image001.png\" style=\"display: inline;\"></img><br><br>")
     f.write("<h2 style=\"display: inline; vertical-align:middle;  padding-left: 60px;\">Molecular Guided Report</h2></pre>\n")
     f.write("</div>\n")
     f.write("\t\t<table width=\"800\" border=\"0\">\n")
@@ -231,47 +233,13 @@ def write_html_file(folder,patient):
     f.write("\t\t</table>\n")
     f.flush()
     f.close()
-
-
-
-def create_html(folder, patient):
-    output_html = ""
-
-    output_html = output_html + ("<!DOCTYPE html>\n")
-    output_html = output_html + ("<html>\n")
-    output_html = output_html + ("\t<body>\n")
-    output_html = output_html + ("<div class = \"header\">\n")
-    output_html = output_html + ("<img src = \"/Users/jeremymiller/Downloads/PMed Stuff/image001.png\" style=\"display: inline;\"></img>\n")
-    output_html = output_html + ("<h2 style=\"display: inline; vertical-align:middle;  padding-left: 60px;\">Molecular Guided Report</h2></pre>\n")
-    output_html = output_html + ("</div>\n")
-    output_html = output_html + ("\t\t<table width=\"800\" border=\"0\">\n")
-    output_html = output_html + ("\t\t<tr>\n")
-    output_html = output_html + ("\t\t<th style=\"font-family:Georgia, Garamond, Serif;color:white;\"  border=\"0\" bgcolor=\"#4267B2\" align=left>Patient Info</th>\n")
-    output_html = output_html + ("\t\t </tr>\n")
-    output_html = output_html + ("\t\t</table>\n")
-    output_html = output_html + ("<pre><h4> Study ID:       " + patient + "</h3></pre>\n")
-    today = date.today()
-    print("Today's date:", today)
-    output_html = output_html + ("<pre><h4> Report Date:    " + str(today) + "</h3></pre>\n")
-    output_html = output_html + ("<pre><h4> Report Version: 1.0</h3></pre>\n")
-    output_html = output_html + ("\t\t</br>\n")
-    output_html = output_html + ("\t\t</br>\n")
-    output_html = output_html + ("\t\t</br>\n")
-    output_html = output_html + ("\t\t<table width=\"800\" border=\"0\">\n")
-    output_html = output_html + ("\t\t<tr>\n")
-    output_html = output_html + ("\t\t<th style=\"font-family:Georgia, Garamond, Serif;color:white;\"  border=\"0\" bgcolor=\"#4267B2\" align=left>Drug Sensitivity Report</th>\n")
-    output_html = output_html + ("\t\t </tr>\n")
-    output_html = output_html + ("\t\t</table>\n")
-    return output_html
-
-
-
+    return filename
 
 
 def process_files(patient_id):
-    workbook = load_workbook('/Users/jeremymiller/Downloads/PMed Stuff/RULE BASE PLAN 2019.xlsx')
+    workbook = load_workbook(ref_folder + "RULE BASE PLAN 2019.xlsx")
     worksheet = workbook['Main']
-    folder = "/Users/jeremymiller/Downloads/PMed Stuff/Live Patients/"
+
     patient = "PLAN-138-06"
     exp_gene = {}
     cnv_gene = {}
@@ -340,15 +308,15 @@ def process_files(patient_id):
     print("snv")
     print(snv_gene)
 
-    data_out = get_score_genes(patient, exp_gene, folder, score_suffix, 2, 0.75)
-    data_out_snv = get_snp_genes(patient, snv_gene, folder, snv_suffix)
-    data_out_cnv = get_cnv_genes(patient, cnv_gene, folder, cna_suffix, 1)
-    data_out_fusion = get_fusion_genes(patient, fusion_gene, folder, fusion_suffix)
+    data_out = get_score_genes(patient, exp_gene, score_suffix, 2, 0.75)
+    data_out_snv = get_snp_genes(patient, snv_gene, snv_suffix)
+    data_out_cnv = get_cnv_genes(patient, cnv_gene, cna_suffix, 1)
+    data_out_fusion = get_fusion_genes(patient, fusion_gene, fusion_suffix)
 
     print("=====output=====")
-    write_html_file(folder, patient)
+    write_html_file(patient)
 
-    f = open(folder + patient + ".html", "a")
+    f = open(output_folder + patient + ".html", "a")
     if len(data_out_snv) > 0:
         f.write("<h3>Single Nucleotide Variants</h3>")
         f.write("<table width=\"800\" border=\"0\">\n")
@@ -449,7 +417,9 @@ def process_files(patient_id):
 @app.route("/")
 def home():
     webpage = "<html><form method=\"POST\" enctype=\"multipart/form-data\" action=\"upload\">"
-    webpage = webpage + "<input type=\"file\" name=\"file\" multiple=\"\">"
+    webpage = webpage + "<label for=\"patient\">Patient ID:</label>"
+    webpage = webpage + "<input type=\"text\" id=\"patient\" name=\"patient\"><br><br>"
+    webpage = webpage + "<input type=\"file\" name=\"file\" multiple=\"\"><br><br>"
     webpage = webpage + "<input type=\"submit\" value=\"add\">"
     webpage = webpage + "</form>"
     return webpage
@@ -461,16 +431,21 @@ def upload():
     file_names = ""
     if not _upload_dir:
         raise ValueError('Uploads are disabled.')
+    patient = request.form['patient']
     if request.method == "POST":
         files = request.files.getlist("file")
         print("Here")
         for file in files:
             print(file.filename)
             file.save(os.path.join(_upload_dir, file.filename))
-    return file_names
+    process_files(patient)
+    f = open(output_folder + patient + ".html", "r")
+    blah = f.read()
+    return blah
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
 
 
 
