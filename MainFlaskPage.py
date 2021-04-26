@@ -210,7 +210,7 @@ def write_html_file(patient):
     f.write("<html>\n")
     f.write("\t<body>\n")
     f.write("<div class = \"header\">\n")
-    f.write("<img src =\"" + output_folder + "image001.png\" style=\"display: inline;\"></img><br><br>")
+    f.write("<img src = \"/static/image001.png\" style=\"display: inline;\"></img><br><br>")
     f.write("<h2 style=\"display: inline; vertical-align:middle;  padding-left: 60px;\">Molecular Guided Report</h2></pre>\n")
     f.write("</div>\n")
     f.write("\t\t<table width=\"800\" border=\"0\">\n")
@@ -441,6 +441,7 @@ def upload():
     process_files(patient)
     f = open(output_folder + patient + ".html", "r")
     blah = f.read()
+    print(app.root_path)
     return blah
 
 
