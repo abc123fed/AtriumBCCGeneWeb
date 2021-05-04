@@ -4,7 +4,7 @@ from openpyxl import load_workbook
 import mygene
 import re
 from datetime import date
-import os
+import glob, os
 
 
 
@@ -240,7 +240,7 @@ def process_files(patient_id):
     workbook = load_workbook(ref_folder + "RULE BASE PLAN 2019.xlsx")
     worksheet = workbook['Main']
 
-    patient = "PLAN-138-06"
+    patient = patient_id
     exp_gene = {}
     cnv_gene = {}
     fusion_gene = {}
@@ -416,6 +416,13 @@ def process_files(patient_id):
 
 @app.route("/")
 def home():
+    html_file = open("./static/index.html","r")
+    output = html_file.read()
+    return output
+
+
+@app.route("/new_patient")
+def upload_file():
     webpage = "<html><form method=\"POST\" enctype=\"multipart/form-data\" action=\"upload\">"
     webpage = webpage + "<label for=\"patient\">Patient ID:</label>"
     webpage = webpage + "<input type=\"text\" id=\"patient\" name=\"patient\"><br><br>"
@@ -424,6 +431,31 @@ def home():
     webpage = webpage + "</form>"
     return webpage
 
+@app.route("/existing_report")
+def get_report():
+    webpage = "<html>"
+    webpage = webpage + "<form method=\"POST\" action=\"/process_existing\">"
+    webpage = webpage + "<select name=\"patient\" size=\"10\">"
+    for file in os.listdir("./homedir/"):
+        if file.endswith(".html"):
+            print(file)
+            webpage = webpage + "<option value=\"" + file + "\">" + file.replace(".html", "") + "</option>"
+    webpage = webpage + "</select>"
+    webpage = webpage + "<input type=\"submit\" value=\"Get Report\">"
+    webpage = webpage + "</form>"
+    webpage = webpage + "</html>"
+    #print(webpage)
+    return webpage
+
+
+@app.route('/process_existing', methods=['GET','POST'])
+def get_existing():
+    file = request.form.get("patient")
+    print(file)
+    output_file = "./homedir/" + file
+    read_file = open(output_file,"r")
+    webpage = read_file.read()
+    return webpage
 
 @app.route('/upload', methods=['GET','POST'])
 def upload():
