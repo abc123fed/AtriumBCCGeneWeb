@@ -5,7 +5,7 @@ import mygene
 import re
 from datetime import date
 import glob, os
-
+from os.path import exists
 
 
 _upload_dir = "./files/"
@@ -14,7 +14,7 @@ output_folder = "./homedir/"
 app = Flask(__name__)
 
 
-def get_score_genes(patient_id, score_map, score_suffix, nrzThreshold, crcThreshold):
+def get_score_genes(patient_id, score_map, score_suffix, nrzThreshold, crcThreshold, lowCRCThreshold):
     data_out = {}
     mg = mygene.MyGeneInfo()
     ens = []
@@ -51,15 +51,27 @@ def get_score_genes(patient_id, score_map, score_suffix, nrzThreshold, crcThresh
                     print("nrz: " + gene['symbol'] + "\t" + str(ind_rule["drug"]))
                 if crc_score > crcThreshold:
                     print("crc: " + gene['symbol'] + "\t" + str(ind_rule["drug"]))
-            if (z_score > nrzThreshold or crc_score > crcThreshold):
-                if ind_rule["drug"] not in data_out:
-                    data_out[ind_rule["drug"]] = []
-                table_entry = {}
-                table_entry["gene"] = gene["symbol"]
-                table_entry["z_score"] = z_score
-                table_entry["crc"] = crc_score
-                table_entry["sense"] = ind_rule["sense"]
-                data_out[ind_rule["drug"]].append(table_entry)
+                if (z_score > nrzThreshold or crc_score > crcThreshold):
+                    if ind_rule["drug"] not in data_out:
+                        data_out[ind_rule["drug"]] = []
+                    table_entry = {}
+                    table_entry["gene"] = gene["symbol"]
+                    table_entry["z_score"] = z_score
+                    table_entry["crc"] = crc_score
+                    table_entry["sense"] = ind_rule["sense"]
+                    table_entry["direction"] = "over"
+                    data_out[ind_rule["drug"]].append(table_entry)
+            elif type == "under":
+                if (-1*z_score > nrzThreshold or crc_score < lowCRCThreshold):
+                    if ind_rule["drug"] not in data_out:
+                        data_out[ind_rule["drug"]] = []
+                    table_entry = {}
+                    table_entry["gene"] = gene["symbol"]
+                    table_entry["z_score"] = z_score
+                    table_entry["crc"] = crc_score
+                    table_entry["sense"] = ind_rule["sense"]
+                    table_entry["direction"] = "under"
+                    data_out[ind_rule["drug"]].append(table_entry)
     return data_out
 
 def get_snp_genes(patient_id, snv_map,snv_suffix,):
@@ -124,6 +136,49 @@ def get_snp_genes(patient_id, snv_map,snv_suffix,):
                 table_entry = {}
                 table_entry["gene"] = gene["symbol"]
                 table_entry["aa_change"] = aa_change_loc
+                table_entry["sense"] = ind_rule["sense"]
+                data_out[ind_rule["drug"]].append(table_entry)
+    return data_out
+
+def get_snp_genes_peach(patient_id, snv_map):
+    d = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
+         'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
+         'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
+         'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M', 'XAA': 'X'}
+
+    ens_snv = {}
+    data_out = {}
+    xlsx_file = _upload_dir + patient_id + "_beatCC_Somatic.xlsx"
+    if not exists(xlsx_file):
+        return data_out;
+    workbook = load_workbook(xlsx_file)
+    worksheet = workbook.active
+    row_counter = 0
+    for row_cells in worksheet.iter_rows():
+        if row_counter == 0:
+            row_counter = row_counter + 1
+            continue
+        variant_type = str(row_cells[4].value).upper().strip()
+        if "MISSENSE" in variant_type:
+            aa_change = str(row_cells[6].value)
+            ens_gene = str(row_cells[5].value)
+            if ens_gene not in ens_snv:
+                ens_snv[ens_gene] = []
+            ens_snv[ens_gene].append(aa_change)
+    print("NRAS")
+    print(snv_map["NRAS"])
+    print(ens_snv)
+    for gene in ens_snv:
+        if gene.upper() not in snv_map:
+            continue
+        for aa_change in ens_snv[gene]:
+            rules = snv_map[gene]
+            for ind_rule in rules:
+                if ind_rule["drug"] not in data_out:
+                    data_out[ind_rule["drug"]] = []
+                table_entry = {}
+                table_entry["gene"] = gene
+                table_entry["aa_change"] = aa_change
                 table_entry["sense"] = ind_rule["sense"]
                 data_out[ind_rule["drug"]].append(table_entry)
     return data_out
@@ -235,22 +290,13 @@ def write_html_file(patient):
     f.close()
     return filename
 
-
-def process_files(patient_id):
-    workbook = load_workbook(ref_folder + "RULE BASE PLAN 2019.xlsx")
-    worksheet = workbook['Main']
-
-    patient = patient_id
+def process_rules_plan(workbook):
     exp_gene = {}
     cnv_gene = {}
     fusion_gene = {}
     snv_gene = {}
-
-    cna_suffix = ".final.cna.seg.vcf"
-    score_suffix = ".Score"
-    snv_suffix = ".snpeff.final.vcf"
-    fusion_suffix = ".thf.vcf"
-
+    worksheet = workbook['Main']
+    output = {}
     for row_cells in worksheet.iter_rows():
         print(row_cells[0].value)
         if row_cells[0].value is None or str(row_cells[0].value).upper() == "DRUG":
@@ -299,6 +345,181 @@ def process_files(patient_id):
             if gene1 not in snv_gene:
                 snv_gene[gene1] = []
             snv_gene[gene1].append(rule)
+    output["snv_gene"] = snv_gene
+    output["cnv_gene"] = cnv_gene
+    output["fusion_gene"] = fusion_gene
+    output["exp_gene"] = exp_gene
+    return output
+
+
+def process_rules_mgt9(workbook):
+    exp_gene = {}
+    cnv_gene = {}
+    fusion_gene = {}
+    snv_gene = {}
+    worksheet = workbook['Main']
+    output = {}
+    for row_cells in worksheet.iter_rows():
+        type = ""
+        print(row_cells[0].value)
+        if row_cells[0].value is None or str(row_cells[0].value).upper() == "DRUG":
+            continue
+        rule = {}
+        rule["drug"] = str(row_cells[0].value).strip()
+        gene1 = ""
+        gene2 = ""
+
+        gene = str(row_cells[2].value).upper()
+        gene1 = gene
+        if "_" in gene:
+            gene_vec = gene.split("_")
+            gene1 = str(gene_vec[0])
+            gene2 = str(gene_vec[1])
+
+        rule["gene1"] = gene1
+        rule["gene2"] = gene2
+        rule["sense"] = str(row_cells[5].value).upper()
+        rule["aberration_value"] = str(row_cells[4].value).lower().strip()
+        if row_cells[6].value is not None:
+            rule["refs"] = "https://www.ncbi.nlm.nih.gov/pubmed/report=" + str(row_cells[6].value).replace(" ", "") \
+                           + "medline&format=text"
+        else:
+            rule["refs"] = ""
+        type_v = str(row_cells[3].value).lower().strip()
+
+        if type_v == "none":
+            if gene2 == "":
+                print("Error in fusion rule: " + gene1)
+                continue
+            if gene1 not in fusion_gene:
+                fusion_gene[gene1] = []
+            if gene2 not in fusion_gene:
+                fusion_gene[gene2] = []
+            fusion_gene[gene1].append(rule)
+            fusion_gene[gene2].append(rule)
+        elif type_v == "exp":
+            if gene1 not in exp_gene:
+                exp_gene[gene1] = []
+            exp_gene[gene1].append(rule)
+        elif type_v == "cnv":
+            if gene1 not in cnv_gene:
+                cnv_gene[gene1] = []
+            cnv_gene[gene1].append(rule)
+        elif type_v == "snv":
+            if gene1 not in snv_gene:
+                snv_gene[gene1] = []
+            snv_gene[gene1].append(rule)
+    output["snv_gene"] = snv_gene
+    output["cnv_gene"] = cnv_gene
+    output["fusion_gene"] = fusion_gene
+    output["exp_gene"] = exp_gene
+    return output
+
+
+def process_rules_peach(workbook):
+    exp_gene = {}
+    cnv_gene = {}
+    fusion_gene = {}
+    snv_gene = {}
+    worksheet = workbook['Main']
+    output = {}
+    for row_cells in worksheet.iter_rows():
+        type = ""
+        print(row_cells[0].value)
+        if row_cells[0].value is None or str(row_cells[0].value).upper() == "DRUG":
+            continue
+        rule = {}
+        rule["drug"] = str(row_cells[0].value).strip()
+        gene1 = ""
+        gene2 = ""
+
+        gene = str(row_cells[2].value).upper()
+        gene1 = gene
+        if "_" in gene:
+            gene_vec = gene.split("_")
+            gene1 = str(gene_vec[0])
+            gene2 = str(gene_vec[1])
+
+        rule["gene1"] = gene1
+        rule["gene2"] = gene2
+        rule["sense"] = str(row_cells[5].value).upper()
+        rule["aberration_value"] = str(row_cells[4].value).lower().strip()
+        if row_cells[6].value is not None:
+            rule["refs"] = "https://www.ncbi.nlm.nih.gov/pubmed/report=" + str(row_cells[6].value).replace(" ", "") \
+                           + "medline&format=text"
+        else:
+            rule["refs"] = ""
+        type_v = str(row_cells[3].value).lower().strip()
+
+        if type_v == "none":
+            if gene2 == "":
+                print("Error in fusion rule: " + gene1)
+                continue
+            if gene1 not in fusion_gene:
+                fusion_gene[gene1] = []
+            if gene2 not in fusion_gene:
+                fusion_gene[gene2] = []
+            fusion_gene[gene1].append(rule)
+            fusion_gene[gene2].append(rule)
+        elif type_v == "exp":
+            if gene1 not in exp_gene:
+                exp_gene[gene1] = []
+            exp_gene[gene1].append(rule)
+        elif type_v == "cnv":
+            if gene1 not in cnv_gene:
+                cnv_gene[gene1] = []
+            cnv_gene[gene1].append(rule)
+        elif type_v == "snv":
+            if gene1 not in snv_gene:
+                snv_gene[gene1] = []
+            snv_gene[gene1].append(rule)
+    output["snv_gene"] = snv_gene
+    output["cnv_gene"] = cnv_gene
+    output["fusion_gene"] = fusion_gene
+    output["exp_gene"] = exp_gene
+    return output
+
+
+def process_files(patient_id, study_type):
+    exp_gene = {}
+    cnv_gene = {}
+    fusion_gene = {}
+    snv_gene = {}
+    data_out_fusion = []
+    data_out_cnv = []
+    print(study_type)
+    if study_type == "plan":
+        workbook = load_workbook(ref_folder + "RULE BASE PLAN 2019.xlsx")
+        all_rules = process_rules_plan(workbook)
+        exp_gene = all_rules["exp_gene"]
+        cnv_gene = all_rules["cnv_gene"]
+        snv_gene = all_rules["snv_gene"]
+        fusion_gene = all_rules["fusion_gene"]
+    elif study_type == "mgt9":
+        workbook = load_workbook(ref_folder + "MGT9_rules_final.xlsx")
+        all_rules = process_rules_mgt9(workbook)
+        exp_gene = all_rules["exp_gene"]
+        cnv_gene = all_rules["cnv_gene"]
+        snv_gene = all_rules["snv_gene"]
+        fusion_gene = all_rules["fusion_gene"]
+    elif study_type == "peach":
+        workbook = load_workbook(ref_folder + "Peach_Rules_12232021_FINAL.xlsx") #new rules
+        all_rules = process_rules_peach(workbook)
+        exp_gene = all_rules["exp_gene"]
+        cnv_gene = all_rules["cnv_gene"]
+        snv_gene = all_rules["snv_gene"]
+        fusion_gene = all_rules["fusion_gene"]
+
+
+    patient = patient_id
+
+
+    cna_suffix = ".final.cna.seg.vcf"
+    score_suffix = ".Score"
+    snv_suffix = ".snpeff.final.vcf"
+    fusion_suffix = ".thf.vcf"
+
+
     print("exp")
     print(exp_gene)
     print("cnv")
@@ -308,10 +529,15 @@ def process_files(patient_id):
     print("snv")
     print(snv_gene)
 
-    data_out = get_score_genes(patient, exp_gene, score_suffix, 2, 0.75)
-    data_out_snv = get_snp_genes(patient, snv_gene, snv_suffix)
-    data_out_cnv = get_cnv_genes(patient, cnv_gene, cna_suffix, 1)
-    data_out_fusion = get_fusion_genes(patient, fusion_gene, fusion_suffix)
+    data_out = get_score_genes(patient, exp_gene, score_suffix, 2, 0.75, 0.25)
+    if study_type != "peach":
+        data_out_snv = get_snp_genes(patient, snv_gene, snv_suffix)
+    else:
+        data_out_snv = get_snp_genes_peach(patient, snv_gene)
+    if study_type != "peach":
+        data_out_cnv = get_cnv_genes(patient, cnv_gene, cna_suffix, 1)
+    if study_type != "peach":
+        data_out_fusion = get_fusion_genes(patient, fusion_gene, fusion_suffix)
 
     print("=====output=====")
     write_html_file(patient)
@@ -328,8 +554,14 @@ def process_files(patient_id):
                 "<th style=\"font-family:Georgia, Garamond, Serif;color:white;\" border=\"0\" bgcolor=\"#4267B2\" align=left>" +
                 "AA Change</th></tr>")
     counter = 0
+    repeat_drugs = {}
     for drug in data_out_snv:
         for rule in data_out_snv[drug]:
+            gene = rule["gene"]
+            test = gene + "_" + drug
+            if test in repeat_drugs:
+                continue
+            repeat_drugs[test] = ""
             f.write("<tr>")
             f.write("<td width=\"200\">" + drug + "</td>" + "<td width=\"200\">" + rule["gene"] + "</td>" +
                     "<td width=\"200\">" + str(rule["aa_change"]) + "</td>")
@@ -382,7 +614,7 @@ def process_files(patient_id):
     print(data_out)
     f.write("<h3>Gene Expression Changes</h3>")
     drug_written = {}
-    for drug in data_out:
+    for drug in sorted(data_out):
         f.write("<table width=\"800\" border=\"0\">\n")
         for rule in data_out[drug]:
             if drug not in drug_written:
@@ -395,11 +627,17 @@ def process_files(patient_id):
                 "<th style=\"font-family:Georgia, Garamond, Serif;color:white;\" border=\"0\" bgcolor=\"#4267B2\" align=left>" +
                 "Gene</th>" +
                 "<th style=\"font-family:Georgia, Garamond, Serif;color:white;\" border=\"0\" bgcolor=\"#4267B2\" align=left>" +
+                "Over/Under Expression</th>" +
+                "<th style=\"font-family:Georgia, Garamond, Serif;color:white;\" border=\"0\" bgcolor=\"#4267B2\" align=left>" +
+                "Sensitive/Resistant</th>" +
+                "<th style=\"font-family:Georgia, Garamond, Serif;color:white;\" border=\"0\" bgcolor=\"#4267B2\" align=left>" +
                 "NRZ</th>" +
                 "<th style=\"font-family:Georgia, Garamond, Serif;color:white;\" border=\"0\" bgcolor=\"#4267B2\" align=left>" +
                 "CRC</th></tr>")
             f.write("<tr>")
-            f.write("<td width=\"200\">" + drug + "</td>" + "<td width=\"200\">" + rule["gene"] + "</td>" +
+            f.write("<td width=\"200\">" + drug.replace("/","</br>")  + "</td>" + "<td width=\"200\">" + rule["gene"] + "</td>" +
+                    "<td width=\"200\">" + str(rule["direction"]).upper() + "</td>" +
+                    "<td width=\"200\">" + str(rule["sense"]) + "</td>" +
                     "<td width=\"200\">" + str(rule["z_score"]) + "</td>" +
                     "<td width=\"200\">" + str(rule["crc"]) + "</td></tr>")
         f.write("</table>")
@@ -427,6 +665,11 @@ def upload_file():
     webpage = webpage + "<label for=\"patient\">Patient ID:</label>"
     webpage = webpage + "<input type=\"text\" id=\"patient\" name=\"patient\"><br><br>"
     webpage = webpage + "<input type=\"file\" name=\"file\" multiple=\"\"><br><br>"
+    webpage = webpage + "<select name=\"study_type\" id=\"study_type\">"
+    webpage = webpage + "<option value=\"plan\">plan</option>"
+    webpage = webpage + "<option value=\"mgt9\">mgt9</option>"
+    webpage = webpage + "<option value=\"peach\">peach</option>"
+    webpage = webpage + "</select>"
     webpage = webpage + "<input type=\"submit\" value=\"add\">"
     webpage = webpage + "</form>"
     return webpage
@@ -464,13 +707,15 @@ def upload():
     if not _upload_dir:
         raise ValueError('Uploads are disabled.')
     patient = request.form['patient']
+    report_type = request.form['study_type']
+    print(report_type)
     if request.method == "POST":
         files = request.files.getlist("file")
         print("Here")
         for file in files:
             print(file.filename)
             file.save(os.path.join(_upload_dir, file.filename))
-    process_files(patient)
+    process_files(patient, report_type)
     f = open(output_folder + patient + ".html", "r")
     blah = f.read()
     print(app.root_path)
@@ -478,7 +723,7 @@ def upload():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run(debug=True, host="0.0.0.0",port=int(os.getenv('PORT', 80)))
 
 
 
