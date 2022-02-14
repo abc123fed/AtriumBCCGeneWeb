@@ -43,7 +43,7 @@ def get_score_genes(patient_id, score_map, score_suffix, nrzThreshold, crcThresh
        # print(gene['symbol'] + "\t" + str(ens_nrz[gene["query"]]) + "\t" + str(ens_crc[gene["query"]]))
         z_score = ens_nrz[gene["query"]]
         crc_score = ens_crc[gene["query"]]
-        rules = score_map[gene['symbol']]
+        rules = score_map[gene['symbol'].upper()]
         for ind_rule in rules:
             type = ind_rule["aberration_value"]
             if type == "over":
